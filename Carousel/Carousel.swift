@@ -16,27 +16,11 @@ public protocol CarouselViewDelegate: class {
 
 public final class CarouselView: UIView {
     enum Constant {
-        static let topBottomOffset: CGFloat = 3.0
-        static let parallax: CGFloat = 0.08
-        static let minSlotsPerCircle: Int = 2
-        static let maxSlotsPerCircle: Int = 4
-
         static let fullCircleAngle: CGFloat = .pi * 2.0
         static let quarterCircleAngle: CGFloat = .pi / 2.0
-        
-        static let rotationTimerInterval: TimeInterval = 1.0 / 60.0 // 60 fps
-        static let autoCompletionThreshold: CGFloat = 600.0 // pt/sec
-        static let autoCompletionMinVelocity: CGFloat = 1200.0 // pt/sec
-        static let autoCenteringVelocity: CGFloat = 1600.0 // pt/sec
-
-        enum Shadow {
-            static let radius: CGFloat = 3.0
-            static let color: CGColor = UIColor.black.cgColor
-            static let opacity: Float = 0.25
-            static let offset: CGSize = .init(width: 0.0, height: 0.0)
-        }
     }
     
+    public var configuration: CarouselConfiguration = .default
     public weak var delegate: CarouselViewDelegate?
 
     private var currentSlotSize: CGSize?
@@ -104,19 +88,19 @@ public final class CarouselView: UIView {
     }
 }
 
-// MARK: - Appearance
+// MARK: - Geometry
 
 private extension CarouselView {
     var slotSize: CGSize {
-        let side = bounds.height - Constant.topBottomOffset * 2
+        let side = bounds.height - configuration.geometry.topBottomOffset * 2
         return .init(width: side, height: side)
     }
     
     func setupShadow(for view: UIView) {
-        view.layer.shadowColor = Constant.Shadow.color
-        view.layer.shadowRadius = Constant.Shadow.radius
-        view.layer.shadowOpacity = Constant.Shadow.opacity
-        view.layer.shadowOffset = Constant.Shadow.offset
+        view.layer.shadowColor = configuration.shadow.color
+        view.layer.shadowRadius = configuration.shadow.radius
+        view.layer.shadowOpacity = configuration.shadow.opacity
+        view.layer.shadowOffset = configuration.shadow.offset
     }
     
     func updateSlotsSizeIfNeeded() {
@@ -138,7 +122,7 @@ private extension CarouselView {
 
 extension CarouselView {
     private var slotsPerCircle: Int {
-        return min(Constant.maxSlotsPerCircle, max(subviews.count, Constant.minSlotsPerCircle))
+        return min(configuration.geometry.maxSlotsPerCircle, max(subviews.count, configuration.geometry.minSlotsPerCircle))
     }
     
     private var angleStride: CGFloat {
@@ -155,7 +139,7 @@ extension CarouselView {
     }
     
     private func slotTransform(for angle: CGFloat) -> CGAffineTransform {
-        let scale = ( 1.0 - Constant.parallax ) + Constant.parallax * cos(angle)
+        let scale = ( 1.0 - configuration.geometry.parallax ) + configuration.geometry.parallax * cos(angle)
         return .init(scaleX: scale, y: scale)
     }
     
@@ -211,16 +195,16 @@ extension CarouselView {
         }
 
         let linearVelocity: CGFloat = velocity > 0 ?
-            max(velocity, Constant.autoCompletionMinVelocity) :
-            min(velocity, -Constant.autoCompletionMinVelocity)
+            max(velocity, configuration.gestures.autoCompletionMinVelocity) :
+            min(velocity, -configuration.gestures.autoCompletionMinVelocity)
 
-        let angleIncrement = linearVelocity * CGFloat(Constant.rotationTimerInterval) / rotationRadius
+        let angleIncrement = linearVelocity * CGFloat(configuration.gestures.rotationTimerInterval) / rotationRadius
 
         startRotation(angleIncrement: angleIncrement, distanceToComplete: distanceToComplete, alreadyPassed: 0.0)
     }
 
     private func centerPosition() {
-        let angleIncrement = Constant.autoCenteringVelocity * CGFloat(Constant.rotationTimerInterval) / rotationRadius
+        let angleIncrement = configuration.gestures.autoCenteringVelocity * CGFloat(configuration.gestures.rotationTimerInterval) / rotationRadius
         let signedAngleIncrement = rotationAngle < 0 ? angleIncrement : -angleIncrement
         startRotation(angleIncrement: signedAngleIncrement, distanceToComplete: angleStride, alreadyPassed: angleStride - abs(rotationAngle))
     }
@@ -228,7 +212,7 @@ extension CarouselView {
     private func startRotation(angleIncrement: CGFloat, distanceToComplete: CGFloat, alreadyPassed: CGFloat) {
         var distancePassed: CGFloat = alreadyPassed
         
-        let timer = Timer(timeInterval: Constant.rotationTimerInterval, repeats: true) { [weak self, rotationRadius = rotationRadius] timer in
+        let timer = Timer(timeInterval: configuration.gestures.rotationTimerInterval, repeats: true) { [weak self, rotationRadius = rotationRadius] timer in
             guard let self = self else {
                 timer.invalidate()
                 return
@@ -267,7 +251,7 @@ extension CarouselView {
             rotate(for: translation.x)
         case .ended, .cancelled:
             rotate(for: translation.x)
-            if abs(velocity.x) > Constant.autoCompletionThreshold {
+            if abs(velocity.x) > configuration.gestures.autoCompletionThreshold {
                 completePosition(with: velocity.x)
             }
             else {

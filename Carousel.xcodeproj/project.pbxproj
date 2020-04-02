@@ -11,6 +11,7 @@
 		02BAA316243509EB00DEB6BC /* Carousel.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 02BCAC99243113C800328E98 /* Carousel.framework */; };
 		02BAA317243509EB00DEB6BC /* Carousel.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 02BCAC99243113C800328E98 /* Carousel.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		02BAA31B24350A7900DEB6BC /* Utils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02BAA31A24350A7900DEB6BC /* Utils.swift */; };
+		02BAA31D2435DCA700DEB6BC /* CarouselConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02BAA31C2435DCA700DEB6BC /* CarouselConfiguration.swift */; };
 		02BCACA3243113C800328E98 /* Carousel.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 02BCAC99243113C800328E98 /* Carousel.framework */; };
 		02BCACA8243113C800328E98 /* CarouselTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02BCACA7243113C800328E98 /* CarouselTests.swift */; };
 		02BCACAA243113C800328E98 /* Carousel.h in Headers */ = {isa = PBXBuildFile; fileRef = 02BCAC9C243113C800328E98 /* Carousel.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -56,6 +57,7 @@
 /* Begin PBXFileReference section */
 		02BAA2F9243505D600DEB6BC /* Carousel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Carousel.swift; sourceTree = "<group>"; };
 		02BAA31A24350A7900DEB6BC /* Utils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Utils.swift; sourceTree = "<group>"; };
+		02BAA31C2435DCA700DEB6BC /* CarouselConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarouselConfiguration.swift; sourceTree = "<group>"; };
 		02BCAC99243113C800328E98 /* Carousel.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Carousel.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		02BCAC9C243113C800328E98 /* Carousel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Carousel.h; sourceTree = "<group>"; };
 		02BCAC9D243113C800328E98 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -133,6 +135,7 @@
 				02BCAC9C243113C800328E98 /* Carousel.h */,
 				02BCAC9D243113C800328E98 /* Info.plist */,
 				02BAA2F9243505D600DEB6BC /* Carousel.swift */,
+				02BAA31C2435DCA700DEB6BC /* CarouselConfiguration.swift */,
 				02BAA31A24350A7900DEB6BC /* Utils.swift */,
 			);
 			path = Carousel;
@@ -304,6 +307,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				02BAA31D2435DCA700DEB6BC /* CarouselConfiguration.swift in Sources */,
 				02BAA2FA243505D600DEB6BC /* Carousel.swift in Sources */,
 				02BAA31B24350A7900DEB6BC /* Utils.swift in Sources */,
 			);

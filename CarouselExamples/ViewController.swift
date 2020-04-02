@@ -21,6 +21,7 @@ private extension UIColor {
 class ViewController: UIViewController {
     @IBOutlet private var carouselView: CarouselView! {
         didSet {
+            carouselView.configuration.shadow.radius = 10.0
             carouselView.delegate = self
         }
     }
