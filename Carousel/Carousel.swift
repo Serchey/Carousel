@@ -92,8 +92,20 @@ public final class CarouselView: UIView {
 
 private extension CarouselView {
     var slotSize: CGSize {
-        let side = bounds.height - configuration.geometry.topBottomOffset * 2
-        return .init(width: side, height: side)
+        guard configuration.geometry.aspectRatio != nil || bounds.height != 0.0 else {
+            return .zero
+        }
+
+        let maxWidth = bounds.width
+        let maxHeight = bounds.height
+        let aspectRatio = configuration.geometry.aspectRatio ?? maxWidth / maxHeight
+        let availableHeight = maxHeight - configuration.geometry.topBottomOffset * 2
+        
+        guard availableHeight * aspectRatio <= maxWidth else {
+            return .init(width: maxWidth, height: maxWidth / aspectRatio)
+        }
+
+        return .init(width: availableHeight * aspectRatio, height: availableHeight)
     }
     
     func setupShadow(for view: UIView) {
