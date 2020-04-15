@@ -10,7 +10,7 @@ import Foundation
 import UIKit
 
 public struct CarouselConfiguration {
-    public static let `default` = CarouselConfiguration(geometry: .default, shadow: .default, gestures: .default)
+    public static let `default` = CarouselConfiguration(geometry: .default, shadow: .default, autoCompletion: .default)
 
     public struct Geometry {
         public static let `default` = Geometry(
@@ -42,21 +42,21 @@ public struct CarouselConfiguration {
         public var offset: CGSize
     }
     
-    public struct Gestures {
-        public static let `default` = Gestures(
-            rotationTimerInterval: 1.0 / 60.0, // 60 fps
-            autoCompletionThreshold: 600.0,  // pt/sec
-            autoCompletionMinVelocity: 1200.0, // pt/sec
-            autoCenteringVelocity: 1600.0 // pt/sec
+    public struct AutoCompletion {
+        public static let `default` = AutoCompletion(
+            swipeVelocityThreshold: 600.0, // points per second
+            referenceRoundWidth: 300.0,
+            minVelocity: 5.0, // rounds per second
+            centeringVelocity: 5.0 // rounds per second
         )
 
-        public var rotationTimerInterval: TimeInterval
-        public var autoCompletionThreshold: CGFloat
-        public var autoCompletionMinVelocity: CGFloat
-        public var autoCenteringVelocity: CGFloat
+        public var swipeVelocityThreshold: CGFloat
+        public var referenceRoundWidth: CGFloat
+        public var minVelocity: CGFloat
+        public var centeringVelocity: CGFloat
     }
     
     public var geometry: Geometry
     public var shadow: Shadow
-    public var gestures: Gestures
+    public var autoCompletion: AutoCompletion
 }

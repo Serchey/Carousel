@@ -16,8 +16,9 @@ public protocol CarouselViewDelegate: class {
 
 public final class CarouselView: UIView {
     enum Constant {
-        static let fullCircleAngle: CGFloat = .pi * 2.0
-        static let quarterCircleAngle: CGFloat = .pi / 2.0
+        static let rotationUpdateInterval: TimeInterval = 1.0 / 60.0 // 60 fps
+        static let fullCircle: CGFloat = .pi * 2.0
+        static let quarterCircle: CGFloat = .pi / 2.0
     }
     
     public var configuration: CarouselConfiguration = .default
@@ -91,12 +92,16 @@ public final class CarouselView: UIView {
 // MARK: - Geometry
 
 private extension CarouselView {
+    var containerWidth: CGFloat {
+        return bounds.width
+    }
+
     var slotSize: CGSize {
         guard configuration.geometry.aspectRatio != nil || bounds.height != 0.0 else {
             return .zero
         }
 
-        let maxWidth = bounds.width
+        let maxWidth = containerWidth
         let maxHeight = bounds.height
         let aspectRatio = configuration.geometry.aspectRatio ?? maxWidth / maxHeight
         let availableHeight = maxHeight - configuration.geometry.topBottomOffset * 2
@@ -138,7 +143,7 @@ extension CarouselView {
     }
     
     private var angleStride: CGFloat {
-        return Constant.fullCircleAngle / CGFloat(slotsPerCircle)
+        return Constant.fullCircle / CGFloat(slotsPerCircle)
     }
     
     private var rotationRadius: CGFloat {
@@ -156,7 +161,7 @@ extension CarouselView {
     }
     
     private func isSlotHidden(for angle: CGFloat) -> Bool {
-        let thresholdAngle = angleStride < Constant.quarterCircleAngle ? 0.0 : -sin(angleStride / 2.0)
+        let thresholdAngle = angleStride < Constant.quarterCircle ? 0.0 : -sin(angleStride / 2.0)
         return cos(angle) < thresholdAngle
     }
     
@@ -196,42 +201,47 @@ extension CarouselView {
         setNeedsLayout()
     }
 
-    private func completePosition(with velocity: CGFloat) {
+    private func completePosition(with initialVelocity: CGFloat) {
+        let velocity = initialVelocity / configuration.autoCompletion.referenceRoundWidth * containerWidth
+        
         let distanceToComplete: CGFloat
         
-        if ( velocity >= 0 && rotationAngle >= 0 ) || ( velocity <= 0 && rotationAngle <= 0) {
+        if ( velocity >= 0 && rotationAngle >= 0 ) || ( velocity <= 0 && rotationAngle <= 0 ) {
             distanceToComplete = angleStride - abs(rotationAngle)
         }
         else {
             distanceToComplete = angleStride + abs(rotationAngle)
         }
 
+        let minimumAutoCompletionVelocity = configuration.autoCompletion.minVelocity * containerWidth
+        
         let linearVelocity: CGFloat = velocity > 0 ?
-            max(velocity, configuration.gestures.autoCompletionMinVelocity) :
-            min(velocity, -configuration.gestures.autoCompletionMinVelocity)
+            max(velocity, minimumAutoCompletionVelocity) : min(velocity, -minimumAutoCompletionVelocity)
 
-        let angleIncrement = linearVelocity * CGFloat(configuration.gestures.rotationTimerInterval) / rotationRadius
+        let angleIncrement = linearVelocity * CGFloat(Constant.rotationUpdateInterval) / rotationRadius
 
         startRotation(angleIncrement: angleIncrement, distanceToComplete: distanceToComplete, alreadyPassed: 0.0)
     }
 
     private func centerPosition() {
-        let angleIncrement = configuration.gestures.autoCenteringVelocity * CGFloat(configuration.gestures.rotationTimerInterval) / rotationRadius
+        let autoCenteringVelocity = configuration.autoCompletion.centeringVelocity * containerWidth
+        let angleIncrement = autoCenteringVelocity * CGFloat(Constant.rotationUpdateInterval) / rotationRadius
         let signedAngleIncrement = rotationAngle < 0 ? angleIncrement : -angleIncrement
+
         startRotation(angleIncrement: signedAngleIncrement, distanceToComplete: angleStride, alreadyPassed: angleStride - abs(rotationAngle))
     }
     
     private func startRotation(angleIncrement: CGFloat, distanceToComplete: CGFloat, alreadyPassed: CGFloat) {
         var distancePassed: CGFloat = alreadyPassed
         
-        let timer = Timer(timeInterval: configuration.gestures.rotationTimerInterval, repeats: true) { [weak self, rotationRadius = rotationRadius] timer in
+        let timer = Timer(timeInterval: Constant.rotationUpdateInterval, repeats: true) { [weak self, rotationRadius = rotationRadius] timer in
             guard let self = self else {
                 timer.invalidate()
                 return
             }
             
             let passed = distancePassed / distanceToComplete
-            let increment = angleIncrement * cos(Constant.quarterCircleAngle * passed)
+            let increment = angleIncrement * cos(Constant.quarterCircle * passed)
             let onePixel = 1.0 / UIScreen.main.scale
 
             distancePassed += abs(increment)
@@ -263,7 +273,7 @@ extension CarouselView {
             rotate(for: translation.x)
         case .ended, .cancelled:
             rotate(for: translation.x)
-            if abs(velocity.x) > configuration.gestures.autoCompletionThreshold {
+            if abs(velocity.x) > configuration.autoCompletion.swipeVelocityThreshold {
                 completePosition(with: velocity.x)
             }
             else {
