@@ -202,24 +202,21 @@ extension CarouselView {
     }
 
     private func completePosition(with initialVelocity: CGFloat) {
-        let velocity = initialVelocity / configuration.autoCompletion.referenceRoundWidth * containerWidth
-        
-        let distanceToComplete: CGFloat
-        
-        if ( velocity >= 0 && rotationAngle >= 0 ) || ( velocity <= 0 && rotationAngle <= 0 ) {
-            distanceToComplete = angleStride - abs(rotationAngle)
-        }
-        else {
-            distanceToComplete = angleStride + abs(rotationAngle)
+        guard rotationAngle != 0 else {
+            return
         }
 
+        let velocity = initialVelocity / configuration.autoCompletion.referenceRoundWidth * containerWidth
+        let isRotationAngleCompensated = velocity * rotationAngle < 0 // if sign is different
+        let currentAngle = isRotationAngleCompensated ? ( abs(rotationAngle) - angleStride ) : rotationAngle
+        let distanceToComplete = angleStride - abs(currentAngle)
         let minimumAutoCompletionVelocity = configuration.autoCompletion.minVelocity * containerWidth
         
         let linearVelocity: CGFloat = velocity > 0 ?
             max(velocity, minimumAutoCompletionVelocity) : min(velocity, -minimumAutoCompletionVelocity)
 
         let angleIncrement = linearVelocity * CGFloat(Constant.rotationUpdateInterval) / rotationRadius
-
+        
         startRotation(angleIncrement: angleIncrement, distanceToComplete: distanceToComplete, alreadyPassed: 0.0)
     }
 
@@ -232,8 +229,11 @@ extension CarouselView {
     }
     
     private func startRotation(angleIncrement: CGFloat, distanceToComplete: CGFloat, alreadyPassed: CGFloat) {
-        var distancePassed: CGFloat = alreadyPassed
-        
+        var distancePassed = alreadyPassed
+        let onePixel = 1.0 / UIScreen.main.scale
+        let isIncrementNegative = angleIncrement < 0
+        let incrementAbs = abs(angleIncrement)
+
         let timer = Timer(timeInterval: Constant.rotationUpdateInterval, repeats: true) { [weak self, rotationRadius = rotationRadius] timer in
             guard let self = self else {
                 timer.invalidate()
@@ -241,12 +241,12 @@ extension CarouselView {
             }
             
             let passed = distancePassed / distanceToComplete
-            let increment = angleIncrement * cos(Constant.quarterCircle * passed)
-            let onePixel = 1.0 / UIScreen.main.scale
+            let distanceRemained = distanceToComplete - distancePassed
+            let increment = min(distanceRemained, incrementAbs * cos(Constant.quarterCircle * passed))
 
             distancePassed += abs(increment)
             
-            self.rotationAngle += increment
+            self.rotationAngle += isIncrementNegative ? -increment : increment
             
             if abs(self.rotationAngle) * rotationRadius < onePixel {
                 self.rotationAngle = 0.0
