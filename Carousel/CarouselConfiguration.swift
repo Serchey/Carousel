@@ -44,14 +44,14 @@ public struct CarouselConfiguration {
     
     public struct AutoCompletion {
         public static let `default` = AutoCompletion(
-            swipeVelocityThreshold: 600.0, // points per second
-            referenceRoundWidth: 300.0,
+            swipeVelocityThreshold: 400.0, // points per second
+            referenceCircleDiameter: 300.0, // points
             minVelocity: 5.0, // rounds per second
             centeringVelocity: 5.0 // rounds per second
         )
 
         public var swipeVelocityThreshold: CGFloat
-        public var referenceRoundWidth: CGFloat
+        public var referenceCircleDiameter: CGFloat
         public var minVelocity: CGFloat
         public var centeringVelocity: CGFloat
     }

@@ -19,6 +19,7 @@ public final class CarouselView: UIView {
         static let rotationUpdateInterval: TimeInterval = 1.0 / 60.0 // 60 fps
         static let fullCircle: CGFloat = .pi * 2.0
         static let quarterCircle: CGFloat = .pi / 2.0
+        static let minimumStartingAngle: CGFloat = 0.001
     }
     
     public var configuration: CarouselConfiguration = .default
@@ -34,6 +35,8 @@ public final class CarouselView: UIView {
             }
         }
     }
+    private var timerHasBeenCancelled: Bool = false
+    private var previousTimerIncrement: CGFloat = 0.0
 
     // MARK: - Initialization
     
@@ -181,8 +184,8 @@ extension CarouselView {
 
 // MARK: - Subview ordering
 
-extension CarouselView {
-    private func subviewsOrder(currentIndex: Int, numSlots: Int, totalSubviews: Int) -> [Int] {
+private extension CarouselView {
+    func subviewsOrder(currentIndex: Int, numSlots: Int, totalSubviews: Int) -> [Int] {
         var visibleSubviewTags = [Int](0 ..< totalSubviews).rotated(from: 0, positions: currentIndex)
 
         while visibleSubviewTags.count > numSlots {
@@ -193,34 +196,44 @@ extension CarouselView {
     }
 }
 
-// MARK: - Gesture managing
+// MARK: - Rotation
 
-extension CarouselView {
-    private func rotate(for points: CGFloat) {
+private extension CarouselView {
+    func rotate(for points: CGFloat) {
         rotationAngle += points / rotationRadius
         setNeedsLayout()
     }
 
-    private func completePosition(with initialVelocity: CGFloat) {
-        guard rotationAngle != 0 else {
-            return
+    func completePosition(with initialVelocity: CGFloat) {
+        if rotationAngle == 0.0 {
+            rotationAngle = initialVelocity > 0.0 ? Constant.minimumStartingAngle : -Constant.minimumStartingAngle
         }
 
-        let velocity = initialVelocity / configuration.autoCompletion.referenceRoundWidth * containerWidth
+        let velocity = initialVelocity / configuration.autoCompletion.referenceCircleDiameter * containerWidth
         let isRotationAngleCompensated = velocity * rotationAngle < 0 // if sign is different
         let currentAngle = isRotationAngleCompensated ? ( abs(rotationAngle) - angleStride ) : rotationAngle
-        let distanceToComplete = angleStride - abs(currentAngle)
+        let previousTimerDirectionMatchesWithCurrentDirection = previousTimerIncrement * initialVelocity > 0
+        var distanceToComplete = angleStride - abs(currentAngle)
+
+        if timerHasBeenCancelled && isRotationAngleCompensated && previousTimerDirectionMatchesWithCurrentDirection {
+            distanceToComplete += angleStride
+        }
+        
         let minimumAutoCompletionVelocity = configuration.autoCompletion.minVelocity * containerWidth
         
         let linearVelocity: CGFloat = velocity > 0 ?
             max(velocity, minimumAutoCompletionVelocity) : min(velocity, -minimumAutoCompletionVelocity)
 
         let angleIncrement = linearVelocity * CGFloat(Constant.rotationUpdateInterval) / rotationRadius
-        
+
         startRotation(angleIncrement: angleIncrement, distanceToComplete: distanceToComplete, alreadyPassed: 0.0)
     }
 
-    private func centerPosition() {
+    func centerPosition() {
+        guard rotationTimer == nil else {
+            return
+        }
+
         let autoCenteringVelocity = configuration.autoCompletion.centeringVelocity * containerWidth
         let angleIncrement = autoCenteringVelocity * CGFloat(Constant.rotationUpdateInterval) / rotationRadius
         let signedAngleIncrement = rotationAngle < 0 ? angleIncrement : -angleIncrement
@@ -228,12 +241,14 @@ extension CarouselView {
         startRotation(angleIncrement: signedAngleIncrement, distanceToComplete: angleStride, alreadyPassed: angleStride - abs(rotationAngle))
     }
     
-    private func startRotation(angleIncrement: CGFloat, distanceToComplete: CGFloat, alreadyPassed: CGFloat) {
+    func startRotation(angleIncrement: CGFloat, distanceToComplete: CGFloat, alreadyPassed: CGFloat) {
         var distancePassed = alreadyPassed
         let onePixel = 1.0 / UIScreen.main.scale
         let isIncrementNegative = angleIncrement < 0
         let incrementAbs = abs(angleIncrement)
 
+        previousTimerIncrement = angleIncrement
+        
         let timer = Timer(timeInterval: Constant.rotationUpdateInterval, repeats: true) { [weak self, rotationRadius = rotationRadius] timer in
             guard let self = self else {
                 timer.invalidate()
@@ -242,15 +257,18 @@ extension CarouselView {
             
             let passed = distancePassed / distanceToComplete
             let distanceRemained = distanceToComplete - distancePassed
-            let increment = min(distanceRemained, incrementAbs * cos(Constant.quarterCircle * passed))
-
-            distancePassed += abs(increment)
+            let onePixelIncrement = onePixel / rotationRadius
+            let increment = max(onePixelIncrement, min(distanceRemained, incrementAbs * cos(Constant.quarterCircle * passed)))
+            
+            distancePassed += increment
             
             self.rotationAngle += isIncrementNegative ? -increment : increment
-            
+
             if abs(self.rotationAngle) * rotationRadius < onePixel {
-                self.rotationAngle = 0.0
                 timer.invalidate()
+                self.rotationTimer = nil
+                self.rotationAngle = 0.0
+                self.timerHasBeenCancelled = false
             }
             
             self.setNeedsLayout()
@@ -259,16 +277,28 @@ extension CarouselView {
         rotationTimer = timer
         RunLoop.current.add(timer, forMode: .common)
     }
+    
+    func cancelAutoRotation() {
+        guard let rotationTimer = rotationTimer else {
+            return
+        }
 
-    @objc private func handlePanGesture(_ panGestureRecognizer: UIPanGestureRecognizer) {
-        let translation = panGestureRecognizer.translation(in: self)
-        let velocity = panGestureRecognizer.velocity(in: self)
+        rotationTimer.invalidate()
+        self.rotationTimer = nil
+        timerHasBeenCancelled = true
+    }
+}
 
-        panGestureRecognizer.setTranslation(.zero, in: self)
+// MARK: - Gesture handling
 
-        switch panGestureRecognizer.state {
-        case .began:
-            rotationTimer?.invalidate()
+private extension CarouselView {
+    @objc func handlePanGesture(_ gestureRecognizer: UIPanGestureRecognizer) {
+        let translation = gestureRecognizer.translation(in: self)
+        let velocity = gestureRecognizer.velocity(in: self)
+
+        gestureRecognizer.setTranslation(.zero, in: self)
+
+        switch gestureRecognizer.state {
         case .changed:
             rotate(for: translation.x)
         case .ended, .cancelled:
@@ -279,15 +309,15 @@ extension CarouselView {
             else {
                 centerPosition()
             }
-        case .failed, .possible:
+        case .began, .failed, .possible:
             break
         @unknown default:
             break
         }
     }
     
-    @objc private func handleTapGesture(_ tapGestureRecognizer: UITapGestureRecognizer) {
-        guard case .ended = tapGestureRecognizer.state else {
+    @objc func handleTapGesture(_ gestureRecognizer: UITapGestureRecognizer) {
+        guard case .ended = gestureRecognizer.state else {
             return
         }
 
@@ -295,14 +325,25 @@ extension CarouselView {
             return
         }
 
-        guard subview.bounds.contains(tapGestureRecognizer.location(in: subview)) else {
+        guard subview.bounds.contains(gestureRecognizer.location(in: subview)) else {
             return
         }
         
         delegate?.carouselItemTapped(at: subview.tag)
     }
 
-    private func setupGestureRecognizers() {
+    @objc func handleLongPressGesture(_ gestureRecognizer: UILongPressGestureRecognizer) {
+        switch gestureRecognizer.state {
+        case .began:
+            cancelAutoRotation()
+        case .ended, .cancelled, .failed:
+            centerPosition()
+        default:
+            break
+        }
+    }
+
+    func setupGestureRecognizers() {
         let panGestureRecognizer = UIPanGestureRecognizer(target: self, action: #selector(self.handlePanGesture(_:)))
         panGestureRecognizer.delegate = self
         addGestureRecognizer(panGestureRecognizer)
@@ -310,6 +351,11 @@ extension CarouselView {
         let tapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(self.handleTapGesture(_:)))
         tapGestureRecognizer.delegate = self
         addGestureRecognizer(tapGestureRecognizer)
+        
+        let longPressGestureRecognizer = UILongPressGestureRecognizer(target: self, action: #selector(self.handleLongPressGesture(_:)))
+        longPressGestureRecognizer.minimumPressDuration = 0.0
+        longPressGestureRecognizer.delegate = self
+        addGestureRecognizer(longPressGestureRecognizer)
     }
 }
 
@@ -323,7 +369,14 @@ extension CarouselView: UIGestureRecognizerDelegate {
     }
     
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-        return gestureRecognizer is UITapGestureRecognizer && gestureRecognizers?.contains(gestureRecognizer) == true &&
-            !(otherGestureRecognizer is UIPanGestureRecognizer)
+        guard gestureRecognizers?.contains(gestureRecognizer) == true else {
+            return false
+        }
+        
+        if gestureRecognizer is UILongPressGestureRecognizer {
+            return true
+        }
+        
+        return gestureRecognizer is UITapGestureRecognizer && !(otherGestureRecognizer is UIPanGestureRecognizer)
     }
 }
