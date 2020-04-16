@@ -16,7 +16,7 @@ Pod::Spec.new do |spec|
   #
 
   spec.name         = "Carousel"
-  spec.version      = "0.0.1"
+  spec.version      = "0.0.3"
   spec.summary      = "Nice and sweet browsing experience"
 
   # This description is used to generate tags and improve search results.
