@@ -337,7 +337,9 @@ private extension CarouselView {
         case .began:
             cancelAutoRotation()
         case .ended, .cancelled, .failed:
-            centerPosition()
+            if timerHasBeenCancelled {
+                centerPosition()
+            }
         default:
             break
         }
