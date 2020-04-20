@@ -199,12 +199,23 @@ private extension CarouselView {
 // MARK: - Rotation
 
 private extension CarouselView {
+    var isRotationEnabled: Bool {
+        subviews.count > 1
+    }
+
     func rotate(for points: CGFloat) {
+        guard isRotationEnabled else {
+            return
+        }
         rotationAngle += points / rotationRadius
         setNeedsLayout()
     }
 
     func completePosition(with initialVelocity: CGFloat) {
+        guard isRotationEnabled else {
+            return
+        }
+
         if rotationAngle == 0.0 {
             rotationAngle = initialVelocity > 0.0 ? Constant.minimumStartingAngle : -Constant.minimumStartingAngle
         }
@@ -230,7 +241,7 @@ private extension CarouselView {
     }
 
     func centerPosition() {
-        guard rotationTimer == nil else {
+        guard rotationTimer == nil, isRotationEnabled else {
             return
         }
 
