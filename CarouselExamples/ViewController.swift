@@ -26,20 +26,23 @@ class ViewController: UIViewController {
         }
     }
     
+    @IBOutlet private var pageControl: UIPageControl!
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
         let numberOfSubviews = 5
-        
+
         generateViews(numberOfSubviews).forEach { view in
             carouselView.addSubview(view)
         }
+        pageControl.numberOfPages = carouselView.subviews.count
     }
 }
 
-extension UIViewController: CarouselViewDelegate {
+extension ViewController: CarouselViewDelegate {
     public func carouselDidSwipeToItem(at index: Int) {
-        print("Did swipe to item at index \(index)")
+        pageControl.currentPage = index
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
     }
     
